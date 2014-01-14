@@ -73,9 +73,9 @@ class ResqueStat
     {
         $stats = array();
         $validType = array(
-            self::JOB_STATUS_FAILED => 'fail',
-            self::JOB_STATUS_COMPLETE => 'done',
-            self::JOB_STATUS_SCHEDULED => 'movescheduled'
+            ResqueStat::JOB_STATUS_FAILED => 'fail',
+            ResqueStat::JOB_STATUS_COMPLETE => 'done',
+            ResqueStat::JOB_STATUS_SCHEDULED => 'movescheduled'
         );
 
         if ($type === null) {
@@ -341,7 +341,7 @@ class ResqueStat
             $options['date_after'] = strtotime($options['date_after']);
         }
 
-        if (isset($options['status']) && $options['status'] === self::JOB_STATUS_WAITING) {
+        if (isset($options['status']) && $options['status'] === ResqueStat::JOB_STATUS_WAITING) {
             return $this->getPendingJobs($options);
         }
 
@@ -386,7 +386,7 @@ class ResqueStat
                 }
             }
 
-            if ($options['status'] === self::JOB_STATUS_FAILED) {
+            if ($options['status'] === ResqueStat::JOB_STATUS_FAILED) {
                 $cursor = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'fail_events')
                     ->find(array(), array('d.job_id'))
                     ->sort($options['sort'])
@@ -539,7 +539,7 @@ class ResqueStat
         array_walk(
             $jobs,
             function (&$j) {
-                $j['status'] = self::JOB_STATUS_WAITING;
+                $j['status'] = ResqueStat::JOB_STATUS_WAITING;
             }
         );
         return $jobs;
@@ -802,38 +802,38 @@ class ResqueStat
             $stats->total = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'got_events')->find($filter)->count();
         }
 
-        if (in_array(self::JOB_STATUS_COMPLETE, $options['fields'])) {
-            $stats->count[self::JOB_STATUS_COMPLETE] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'done_events')->find($filter)->count();
+        if (in_array(ResqueStat::JOB_STATUS_COMPLETE, $options['fields'])) {
+            $stats->count[ResqueStat::JOB_STATUS_COMPLETE] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'done_events')->find($filter)->count();
         }
 
-        if (in_array(self::JOB_STATUS_FAILED, $options['fields'])) {
-            $stats->count[self::JOB_STATUS_FAILED] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'fail_events')->find($filter)->count();
-            $stats->perc[self::JOB_STATUS_FAILED] =
+        if (in_array(ResqueStat::JOB_STATUS_FAILED, $options['fields'])) {
+            $stats->count[ResqueStat::JOB_STATUS_FAILED] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'fail_events')->find($filter)->count();
+            $stats->perc[ResqueStat::JOB_STATUS_FAILED] =
                 ($stats->total == 0)
                     ? 0
-                    : round($stats->count[self::JOB_STATUS_FAILED] / $stats->total * 100, 2);
+                    : round($stats->count[ResqueStat::JOB_STATUS_FAILED] / $stats->total * 100, 2);
         }
 
-        $stats->count[self::JOB_STATUS_WAITING] = 0;
+        $stats->count[ResqueStat::JOB_STATUS_WAITING] = 0;
 
-        if (in_array(self::JOB_STATUS_SCHEDULED, $options['fields'])) {
-            $stats->count[self::JOB_STATUS_SCHEDULED] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'movescheduled_events')->find($filter)->count();
-            $stats->perc[self::JOB_STATUS_SCHEDULED] =
+        if (in_array(ResqueStat::JOB_STATUS_SCHEDULED, $options['fields'])) {
+            $stats->count[ResqueStat::JOB_STATUS_SCHEDULED] = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'movescheduled_events')->find($filter)->count();
+            $stats->perc[ResqueStat::JOB_STATUS_SCHEDULED] =
                 ($stats->total == 0)
                     ? 0
-                    : round($stats->count[self::JOB_STATUS_SCHEDULED] / $stats->total * 100, 2);
+                    : round($stats->count[ResqueStat::JOB_STATUS_SCHEDULED] / $stats->total * 100, 2);
         }
 
-        if (in_array(self::JOB_STATUS_WAITING, $options['fields'])) {
+        if (in_array(ResqueStat::JOB_STATUS_WAITING, $options['fields'])) {
             $queues = $this->getAllQueues();
             $pipelineCommands = array();
             foreach ($queues as $queueName) {
                 $pipelineCommands[] = array('llen', 'queue:' . $queueName);
             }
-            $stats->count[self::JOB_STATUS_WAITING] = array_sum(Service::Redis()->pipeline($pipelineCommands));
+            $stats->count[ResqueStat::JOB_STATUS_WAITING] = array_sum(Service::Redis()->pipeline($pipelineCommands));
         }
 
-        $stats->count[self::JOB_STATUS_RUNNING] = 0; // TODO
+        $stats->count[ResqueStat::JOB_STATUS_RUNNING] = 0; // TODO
 
         $stats->oldest = null;
         $stats->newest = null;
@@ -905,7 +905,7 @@ class ResqueStat
 
         $jobsCursor = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'done_events')->find(array('d.job_id' => array('$in' => $jobIds)));
         foreach ($jobsCursor as $successJob) {
-            $jobs[$successJob['d']['job_id']]['status'] = self::JOB_STATUS_COMPLETE;
+            $jobs[$successJob['d']['job_id']]['status'] = ResqueStat::JOB_STATUS_COMPLETE;
             $jobs[$successJob['d']['job_id']]['took'] = $successJob['d']['time'];
             unset($jobIds[array_search($successJob['d']['job_id'], $jobIds)]);
         }
@@ -915,7 +915,7 @@ class ResqueStat
             $jobsCursor = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'fail_events')->find(array('d.job_id' => array('$in' => $jobIds)));
             $pipelineCommands = array();
             foreach ($jobsCursor as $failedJob) {
-                $jobs[$failedJob['d']['job_id']]['status'] = self::JOB_STATUS_FAILED;
+                $jobs[$failedJob['d']['job_id']]['status'] = ResqueStat::JOB_STATUS_FAILED;
                 $jobs[$failedJob['d']['job_id']]['log'] = $failedJob['d']['log'];
                 $jobs[$failedJob['d']['job_id']]['took'] = $failedJob['d']['time'];
                 $pipelineCommands[] = array('get', 'failed:' . $failedJob['d']['job_id']);
@@ -934,13 +934,13 @@ class ResqueStat
         if (!empty($jobIds)) {
             $jobsCursor = Service::Mongo()->selectCollection(Service::$settings['Mongo']['database'], 'process_events')->find(array('d.job_id' => array('$in' => $jobIds)));
             foreach ($jobsCursor as $processJob) {
-                $jobs[$processJob['d']['job_id']]['status'] = self::JOB_STATUS_RUNNING;
+                $jobs[$processJob['d']['job_id']]['status'] = ResqueStat::JOB_STATUS_RUNNING;
                 unset($jobIds[array_search($processJob['d']['job_id'], $jobIds)]);
             }
         }
         if (!empty($jobIds)) {
             foreach ($jobIds as $id) {
-                $jobs[$id]['status'] = self::JOB_STATUS_WAITING;
+                $jobs[$id]['status'] = ResqueStat::JOB_STATUS_WAITING;
             }
         }
 

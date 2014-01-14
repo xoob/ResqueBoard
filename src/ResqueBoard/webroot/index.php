@@ -350,7 +350,7 @@ $app->get(
                 'month' => array('step' => ResqueBoard\Lib\ResqueStat::CUBE_STEP_1HOUR)
                 );
 
-            $start = new DateTime($start);
+            $start = new DateTime(str_replace(' ','+',$start));
 
             $rangeWhitelist = array_merge_recursive(
                 $rangeWhitelist,

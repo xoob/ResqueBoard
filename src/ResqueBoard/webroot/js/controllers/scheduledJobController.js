@@ -1,1 +1,87 @@
-angular.module("app").controller("scheduledJobController",["$scope","$http","$timeout",function(a,b,c){"use strict";a.jobs=[],a.loading=!1,a.date=!1,a.stats={total:0,future:0,past:0};var d=new CalHeatMap,e=new Date,f=8,g="api/scheduled-jobs/stats/{{t:start}}/{{t:end}}";d.init({itemSelector:"#scheduled-jobs-graph",legend:[1,4,8,12],itemName:["job","jobs"],range:f,start:e,cellSize:10,animationDuration:200,tooltip:!0,nextSelector:"#scheduled-jobs-graph .graph-browse-next",previousSelector:"#scheduled-jobs-graph .graph-browse-previous",data:g,loadOnInit:!1,onClick:function(c){a.loading=!0;var d=d3.time.format("%H:%M, %A %B %e %Y");a.date=d(c),b({method:"GET",url:"api/scheduled-jobs/"+ +c/1e3+"/"+(+c/1e3+60)}).success(function(b){a.jobs=[];for(var c in b){for(var d in b[c])b[c][d].created=new Date(1e3*b[c][d].s_time);a.jobs=b}a.loading=!1}).error(function(){})}}),e=new Date(d.getDomain(e,1)[0]),a.clear=function(){a.date=!1,a.jobs=[]};var h=5e3,i=function(){b({method:"GET",url:"api/stats?fields=scheduled_full"}).success(function(b){a.stats=b.scheduled}).error(function(){}),d.update(g),new Date-e>36e5*f&&(d.next(),e.setHours(e.getHours()+1),e=d.getDomain(e,1)[0]),c(i,h)};i()}]);
+angular.module("app").controller("scheduledJobController", [
+	"$scope", "$http", "$timeout", function($scope, $http, $timeout) {
+
+	"use strict";
+
+	$scope.jobs = [];
+	$scope.loading = false;
+	$scope.date = false;
+
+	$scope.stats = {
+		"total" : 0,
+		"future": 0,
+		"past" : 0
+	};
+
+	var cal = new CalHeatMap();
+	var start = new Date();
+	var range = 8;
+	var dataString = "api/scheduled-jobs/stats/{{t:start}}/{{t:end}}";
+
+	cal.init({
+		itemSelector : "#scheduled-jobs-graph",
+		legend : [1,4,8,12],
+		itemName : ["job", "jobs"],
+		range: range,
+		start: start,
+		cellSize: 10,
+		animationDuration: 200,
+		tooltip: true,
+		nextSelector: "#scheduled-jobs-graph .graph-browse-next",
+		previousSelector: "#scheduled-jobs-graph .graph-browse-previous",
+		data: dataString,
+		loadOnInit: false,
+		onClick : function(start) {
+			$scope.loading = true;
+			var formatDate = d3.time.format("%H:%M, %A %B %e %Y");
+			$scope.date = formatDate(start);
+
+			$http({method: "GET", url: "api/scheduled-jobs/" + (+start)/1000 + "/" + ((+start)/1000+60)}).
+				success(function(data) {
+					$scope.jobs = [];
+					for (var timestamp in data) {
+						for (var job in data[timestamp]) {
+							data[timestamp][job].created = new Date(data[timestamp][job].s_time*1000);
+						}
+						$scope.jobs = data;
+					}
+
+					$scope.loading = false;
+				}).
+				error(function() {
+			});
+		}
+	});
+
+	start = new Date(cal.getDomain(start, 1)[0]);
+
+	$scope.clear = function() {
+		$scope.date = false;
+		$scope.jobs = [];
+	};
+
+	var refreshRate = 5000;
+
+	var updateStats = function() {
+
+		$http({method: "GET", url: "api/stats?fields=scheduled_full"}).
+			success(function(data) {
+				$scope.stats = data.scheduled;
+			}).
+			error(function() {
+		});
+
+		cal.update(dataString);
+
+		if ((new Date() - start) > 1000 * 60 * 60 * range) {
+			cal.next();
+			start.setHours(start.getHours() + 1);
+			start = cal.getDomain(start, 1)[0];
+		}
+
+		$timeout(updateStats, refreshRate);
+	};
+
+	updateStats();
+}]);
+
